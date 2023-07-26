@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "shanyraq"
+version = "0.1.0"
+description = ""
+authors = ["dinmukhammed <arystambekdimash005@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+alembic = "^1.11.1"
+fastapi = "^0.100.0"
+sqlalchemy = "^2.0.19"
+pydantic = {extras = ["email"], version = "^2.1.0"}
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+pydantic-extra-types = "^2.0.0"
+uvicorn = "^0.23.1"
+phonenumbers = "^8.13.17"
+python-multipart = "^0.0.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
