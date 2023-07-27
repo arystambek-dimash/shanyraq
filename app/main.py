@@ -1,14 +1,12 @@
-from typing import Annotated
-
 from fastapi import FastAPI, Depends, HTTPException, Form
-from fastapi.requests import Request
-from fastapi.responses import Response
 from fastapi.security import OAuth2PasswordBearer
-from .users_repository import UserRepostitory, UserRequest, UserResponse, UserUpdate
-from .announcements_repository import AnnouncementRequest, AnnouncementResponse, AnnouncementRepository
 from . import database
 from sqlalchemy.orm import Session
 from jose import jwt
+
+from .users_repository import UserRepostitory, UserRequest, UserResponse, UserUpdate
+from .announcements_repository import AnnouncementRequest, AnnouncementResponse, AnnouncementRepository
+from .comment_repository import CommentRequest, CommentRepository, CommentResponse
 
 database.Base.metadata.create_all(bind=database.engine)
 
@@ -17,6 +15,7 @@ oauth2_schema = OAuth2PasswordBearer(tokenUrl="auth/users/login")
 
 user_repo = UserRepostitory()
 announcement_repo = AnnouncementRepository()
+comment_repo = CommentRepository()
 
 
 def encode_to_jwt(phone):
@@ -94,12 +93,14 @@ async def create_announcements(announcement: AnnouncementRequest,
     return {"message": "successful created"}
 
 
-@app.get("/shanyraks/{id_announcement}",tags=["Announcements"])
+@app.get("/shanyraks/{id_announcement}", tags=["Announcements"])
 async def get_announcement(id_announcement: int, db: Session = Depends(get_db)):
-    return announcement_repo.get_announcement_by_id(db, id_announcement)
+    announcement = announcement_repo.get_announcement_by_id(db, id_announcement)
+    announcement.total_comments = comment_repo.get_length_comment(db, id_announcement)
+    return announcement
 
 
-@app.patch("/shanyraks/{id_announcement}",tags=["Announcements"])
+@app.patch("/shanyraks/{id_announcement}", tags=["Announcements"])
 async def update_announcement(id_announcement: int,
                               announcement: AnnouncementRequest,
                               current_user: UserRequest = Depends(get_current_user),
@@ -112,7 +113,7 @@ async def update_announcement(id_announcement: int,
                                                 "the user who placed the announcement")
 
 
-@app.delete("/shanyraks/{id_announcement}",tags=["Announcements"])
+@app.delete("/shanyraks/{id_announcement}", tags=["Announcements"])
 async def delete_announcement(id_announcement: int,
                               current_user: UserRequest = Depends(get_current_user),
                               db: Session = Depends(get_db)):
@@ -124,6 +125,48 @@ async def delete_announcement(id_announcement: int,
                                                 "the user who placed the announcement")
 
 
-@app.post("/shanyraks/{id_announcement}/comments")
-async def type_comment(id_announcement:int,current_user:UserRequest = Depends(get_current_user),db:Session=Depends(get_db)):
-    pass
+@app.get("/shanyraks/{id_announcement}/comments", tags=["Comments"])
+async def get_comment(id_announcement: int,
+                         db: Session = Depends(get_db)):
+    if id_announcement and announcement_repo.get_announcement_by_id(db,id_announcement):
+        return comment_repo.get_comment_by_announcement_id(db, id_announcement)
+    raise HTTPException(status_code=404, detail="The announcement not found")
+
+
+@app.post("/shanyraks/{id_announcement}/comments", tags=["Comments"])
+async def create_comment(id_announcement: int, comment: CommentRequest,
+                         current_user: UserRequest = Depends(get_current_user),
+                         db: Session = Depends(get_db)):
+    if id_announcement and announcement_repo.get_announcement_by_id(db,id_announcement):
+        comment_repo.create_comment(db, current_user.id, id_announcement, comment)
+        return {"message": "Comment was public"}
+    raise HTTPException(status_code=404, detail="The announcement not found")
+
+
+@app.patch("/shanyraks/{id_announcement}/comments/{comment_id}", tags=["Comments"])
+async def update_comment(id_announcement: int, comment_id: int, comment: CommentRequest,
+                         current_user: UserRequest = Depends(get_current_user),
+                         db: Session = Depends(get_db)):
+    db_comment = comment_repo.get_comment_by_announcement_id_with_comment_id(db, id_announcement, comment_id)
+    print(db_comment)
+    if not db_comment:
+        raise HTTPException(status_code=404, detail="The comment not found or Ur not user which created the comment")
+
+    if db_comment.user_id == current_user.id and announcement_repo.get_announcement_by_id(db,id_announcement):
+        comment_repo.update_comment(db, announcement_id=id_announcement, user_id=current_user.id, comment_id=comment_id,
+                                    comment=comment)
+        return {"message": "Comment was successful updated"}
+    raise HTTPException(status_code=404, detail="The comment not found or Ur not user which created the comment")
+
+
+@app.delete("/shanyraks/{id_announcement}/comments/{comment_id}", tags=["Comments"])
+async def delete_comment(id_announcement: int, comment_id: int,
+                         current_user: UserRequest = Depends(get_current_user),
+                         db: Session = Depends(get_db)):
+    db_comment = comment_repo.get_comment_by_announcement_id_with_comment_id(db, id_announcement, comment_id)
+    if not db_comment:
+        raise HTTPException(status_code=404, detail="The comment not found")
+    if db_comment.user_id == current_user.id and announcement_repo.get_announcement_by_id(db,id_announcement):
+        comment_repo.delete_comment(db, announcement_id=id_announcement, user_id=current_user.id, comment_id=comment_id)
+        return {"message": "Comment was successful deleted"}
+    raise HTTPException(status_code=404, detail="The comment not found")

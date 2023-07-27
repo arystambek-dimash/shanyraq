@@ -31,6 +31,8 @@ class Announcement(Base):
     announcement_at = Column(TIMESTAMP, default=datetime.now().replace(second=0,microsecond=0))
     updated_at = Column(TIMESTAMP, default=datetime.now().replace(second=0,microsecond=0))
 
+    total_comments = Column(Integer)
+
     user = Column(ForeignKey('users.id'))
 
 
