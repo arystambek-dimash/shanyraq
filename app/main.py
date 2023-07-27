@@ -46,7 +46,11 @@ def get_current_user(token: str = Depends(oauth2_schema), db: Session = Depends(
 @app.post("/auth/users/", tags=["Register"])
 async def auth(user: UserRequest, db: Session = Depends(get_db)):
     existing_user = user_repo.get_user_by_username(db, user.username)
-    if not existing_user or existing_user.email == user.email or existing_user.username == user.username or existing_user.phone == user.phone:
+    if existing_user and (
+            existing_user.email == user.email or
+            existing_user.username == user.username or
+            existing_user.phone == user.phone
+    ):
         raise HTTPException(status_code=400, detail="The phone number or email or username is already taken")
     user_repo.create_user(db, user)
     return {"message": "Successful Authorized"}
