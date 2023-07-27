@@ -75,7 +75,6 @@ class UserRepostitory:
     def create_user(db: Session, user: UserRequest):
         db_user = User(email=user.email, phone=user.phone, username=user.username, password=user.password,
                        name=user.name, city=user.city)
-
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
@@ -104,5 +103,5 @@ class UserRepostitory:
 
     @staticmethod
     def delete_user(db:Session,user_id):
-        db.execute(delete(User).where(User.id == user_id).first())
+        db.execute(delete(User).where(User.id == user_id))
         db.commit()
