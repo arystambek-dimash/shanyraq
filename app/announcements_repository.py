@@ -84,3 +84,4 @@ class AnnouncementRepository:
     @staticmethod
     def get_all(db: Session):
         return db.query(Announcement).all()
+

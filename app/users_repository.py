@@ -9,8 +9,8 @@ from sqlalchemy import update, func
 
 
 class UserRequest(BaseModel):
-    id:int
     email: EmailStr
+    username: str
     phone: PhoneNumber = Field(max_length=32, min_length=10)
     password: str = Field(max_length=32, min_length=8)
     name: str = Field(max_length=30)
@@ -22,6 +22,7 @@ class UserRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "email": "nfactorial@school.com",
+                "username": "qwerty",
                 "phone": "+77775551122",
                 "password": "password123",
                 "name": "Dalida",
@@ -31,13 +32,13 @@ class UserRequest(BaseModel):
 
 
 class UserLogin(BaseModel):
-    username: PhoneNumber = Field(max_length=32, min_length=10)
+    username:str = Field(max_length=32, min_length=10)
     password: str = Field(max_length=32, min_length=8)
 
     class Config:
         json_schema_extra = {
             "example": {
-                "username": "+77772221122",
+                "username": "qwerty",
                 "password": "password"
             }
         }
@@ -45,6 +46,7 @@ class UserLogin(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
+    username: str
     email: str
     phone: str
     name: str
@@ -54,15 +56,15 @@ class UserResponse(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    phone: PhoneNumber
+    username: str
     name: str
     city: str
 
 
 class UserRepostitory:
     @staticmethod
-    def get_user_by_phone(db: Session, phone):
-        return db.query(User).filter(func.replace(User.phone, "-", "") == phone).first()
+    def get_user_by_username(db: Session, username):
+        return db.query(User).filter(User.username == username).first()
 
     @staticmethod
     def get_user_by_id(db: Session, user_id):
@@ -70,7 +72,8 @@ class UserRepostitory:
 
     @staticmethod
     def create_user(db: Session, user: UserRequest):
-        db_user = User(email=user.email, phone=user.phone, password=user.password, name=user.name, city=user.city)
+        db_user = User(email=user.email, phone=user.phone, username=user.username, password=user.password,
+                       name=user.name, city=user.city)
 
         db.add(db_user)
         db.commit()
@@ -80,9 +83,10 @@ class UserRepostitory:
 
     @staticmethod
     def update_user(db: Session, user_email, user: UserUpdate):
-        db_update = update(User).where(User.email == user_email).values(phone=user.phone, name=user.name,
+        db_update = update(User).where(User.email == user_email).values(username=user.username, name=user.name,
                                                                         city=user.city,
-                                                                        updated_at=datetime.now().replace(second=0,microsecond=0))
+                                                                        updated_at=datetime.now().replace(second=0,
+                                                                                                          microsecond=0))
         db.execute(db_update)
         db.commit()
         updated_user = db.query(User).get(user_email)

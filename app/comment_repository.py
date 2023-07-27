@@ -5,7 +5,7 @@ from sqlalchemy import update,delete,func
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from .models import Comment
-
+from .models import Announcement
 
 class CommentRequest(BaseModel):
     content: str
@@ -33,7 +33,7 @@ class CommentRepository:
 
     @staticmethod
     def get_comment_by_announcement_id_with_comment_id(db: Session, announcement_id,comment_id):
-        return db.query(Comment).filter(Comment.announcement_id == announcement_id and Comment.id == comment_id).first()
+        return db.query(Comment).filter(Comment.id == comment_id and Comment.announcement_id == announcement_id).first()
 
     @staticmethod
     def update_comment(db: Session, announcement_id,comment_id,user_id,comment:CommentRequest):

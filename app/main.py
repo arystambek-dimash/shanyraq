@@ -18,14 +18,14 @@ announcement_repo = AnnouncementRepository()
 comment_repo = CommentRepository()
 
 
-def encode_to_jwt(phone):
-    body = {"phone": phone}
+def encode_to_jwt(user_id):
+    body = {"user_id":user_id}
     return jwt.encode(body, "shanyraq", algorithm="HS256")
 
 
 def decode_access_token(token):
     data = jwt.decode(token, "shanyraq", algorithms=["HS256"])
-    return data["phone"]
+    return data["user_id"]
 
 
 def get_db():
@@ -37,32 +37,29 @@ def get_db():
 
 
 def get_current_user(token: str = Depends(oauth2_schema), db: Session = Depends(get_db)):
-    user_phone = decode_access_token(token)
-    user_phone = user_phone.replace("-", "")
-    user = user_repo.get_user_by_phone(db, user_phone)
+    user = user_repo.get_user_by_id(db,int(decode_access_token(token)))
     if not user:
-        raise HTTPException(status_code=404, detail="Not user such number")
-
+        raise HTTPException(status_code=404, detail="Not user such username")
     return user
 
 
 @app.post("/auth/users/", tags=["Register"])
 async def auth(user: UserRequest, db: Session = Depends(get_db)):
-    existing_user = user_repo.get_user_by_phone(db, user.phone)
-    if existing_user:
-        return {"message": "The phone number or email is already taken"}
+    existing_user = user_repo.get_user_by_username(db, user.username)
+    if existing_user and existing_user.email == user.email and existing_user.username == user.username:
+        return {"message": "The phone number or email or username is already taken"}
     user_repo.create_user(db, user)
     return {"message": "Successful Authorized"}
 
 
 @app.post("/auth/users/login", tags=["Login"])
 async def login(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
-    user = user_repo.get_user_by_phone(db, "tel:" + username)
+    user = user_repo.get_user_by_username(db,username)
     if user is None:
         raise HTTPException(status_code=404, detail="The user not found")
     if user.password != password:
         raise HTTPException(status_code=404, detail="The password is inccorect")
-    access_token = encode_to_jwt(user.phone)
+    access_token = encode_to_jwt(user.id)
     return {"access_token": access_token}
 
 
@@ -81,12 +78,16 @@ async def profile_edit(user_update: UserUpdate,
 
 @app.get("/shanyraks/all", tags=["Announcements"])
 async def get_all_announcements(db: Session = Depends(get_db)):
-    return announcement_repo.get_all(db)
+    announcements = announcement_repo.get_all(db)
+    for i in announcements:
+        if comment_repo.get_comment_by_announcement_id(db,i.id):
+            i.total_comments = comment_repo.get_length_comment(db,i.id)
+    return announcements
 
 
 @app.post("/shanyraks/", tags=["Announcements"])
 async def create_announcements(announcement: AnnouncementRequest,
-                               current_user: UserRequest = Depends(get_current_user),
+                               current_user: UserResponse = Depends(get_current_user),
                                db: Session = Depends(get_db)):
     announcement.user_id = current_user.id
     announcement_repo.create_announcement(db, announcement)
@@ -95,15 +96,15 @@ async def create_announcements(announcement: AnnouncementRequest,
 
 @app.get("/shanyraks/{id_announcement}", tags=["Announcements"])
 async def get_announcement(id_announcement: int, db: Session = Depends(get_db)):
-    announcement = announcement_repo.get_announcement_by_id(db, id_announcement)
-    announcement.total_comments = comment_repo.get_length_comment(db, id_announcement)
+    announcement = announcement_repo.get_announcement_by_id(db,id_announcement)
+    announcement.total_comments = comment_repo.get_length_comment(db,id_announcement)
     return announcement
 
 
 @app.patch("/shanyraks/{id_announcement}", tags=["Announcements"])
 async def update_announcement(id_announcement: int,
                               announcement: AnnouncementRequest,
-                              current_user: UserRequest = Depends(get_current_user),
+                              current_user: UserResponse = Depends(get_current_user),
                               db: Session = Depends(get_db)):
     updating_announcement = announcement_repo.get_announcement_by_id(db, id_announcement)
     if updating_announcement.user == current_user.id:
@@ -115,7 +116,7 @@ async def update_announcement(id_announcement: int,
 
 @app.delete("/shanyraks/{id_announcement}", tags=["Announcements"])
 async def delete_announcement(id_announcement: int,
-                              current_user: UserRequest = Depends(get_current_user),
+                              current_user:UserResponse = Depends(get_current_user),
                               db: Session = Depends(get_db)):
     updating_announcement = announcement_repo.get_announcement_by_id(db, id_announcement)
     if updating_announcement.user == current_user.id:
@@ -135,7 +136,7 @@ async def get_comment(id_announcement: int,
 
 @app.post("/shanyraks/{id_announcement}/comments", tags=["Comments"])
 async def create_comment(id_announcement: int, comment: CommentRequest,
-                         current_user: UserRequest = Depends(get_current_user),
+                         current_user: UserResponse = Depends(get_current_user),
                          db: Session = Depends(get_db)):
     if id_announcement and announcement_repo.get_announcement_by_id(db,id_announcement):
         comment_repo.create_comment(db, current_user.id, id_announcement, comment)
@@ -145,14 +146,12 @@ async def create_comment(id_announcement: int, comment: CommentRequest,
 
 @app.patch("/shanyraks/{id_announcement}/comments/{comment_id}", tags=["Comments"])
 async def update_comment(id_announcement: int, comment_id: int, comment: CommentRequest,
-                         current_user: UserRequest = Depends(get_current_user),
+                         current_user: UserResponse = Depends(get_current_user),
                          db: Session = Depends(get_db)):
     db_comment = comment_repo.get_comment_by_announcement_id_with_comment_id(db, id_announcement, comment_id)
-    print(db_comment)
     if not db_comment:
         raise HTTPException(status_code=404, detail="The comment not found or Ur not user which created the comment")
-
-    if db_comment.user_id == current_user.id and announcement_repo.get_announcement_by_id(db,id_announcement):
+    if db_comment.user_id == current_user.id and db_comment:
         comment_repo.update_comment(db, announcement_id=id_announcement, user_id=current_user.id, comment_id=comment_id,
                                     comment=comment)
         return {"message": "Comment was successful updated"}
@@ -161,12 +160,12 @@ async def update_comment(id_announcement: int, comment_id: int, comment: Comment
 
 @app.delete("/shanyraks/{id_announcement}/comments/{comment_id}", tags=["Comments"])
 async def delete_comment(id_announcement: int, comment_id: int,
-                         current_user: UserRequest = Depends(get_current_user),
+                         current_user: UserResponse = Depends(get_current_user),
                          db: Session = Depends(get_db)):
     db_comment = comment_repo.get_comment_by_announcement_id_with_comment_id(db, id_announcement, comment_id)
     if not db_comment:
         raise HTTPException(status_code=404, detail="The comment not found")
-    if db_comment.user_id == current_user.id and announcement_repo.get_announcement_by_id(db,id_announcement):
+    if db_comment.user_id == current_user.id and db_comment:
         comment_repo.delete_comment(db, announcement_id=id_announcement, user_id=current_user.id, comment_id=comment_id)
         return {"message": "Comment was successful deleted"}
-    raise HTTPException(status_code=404, detail="The comment not found")
+    raise HTTPException(status_code=404, detail="The comment not found or ur not the creater")
