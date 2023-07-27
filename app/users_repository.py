@@ -5,7 +5,7 @@ from .models import User
 from pydantic import BaseModel, EmailStr, Field
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from sqlalchemy.orm import Session
-from sqlalchemy import update, func
+from sqlalchemy import update, delete
 
 
 class UserRequest(BaseModel):
@@ -32,7 +32,7 @@ class UserRequest(BaseModel):
 
 
 class UserLogin(BaseModel):
-    username:str = Field(max_length=32, min_length=10)
+    username: str = Field(max_length=32, min_length=10)
     password: str = Field(max_length=32, min_length=8)
 
     class Config:
@@ -53,6 +53,7 @@ class UserResponse(BaseModel):
     city: str
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
+    is_superuser: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -95,3 +96,13 @@ class UserRepostitory:
     @staticmethod
     def get_all(db: Session):
         return db.query(User).all()
+
+    @staticmethod
+    def appoint_as_superuser(db: Session, user_id):
+        db.execute(update(User).where(User.id == user_id).values(is_superuser=True))
+        db.commit()
+
+    @staticmethod
+    def delete_user(db:Session,user_id):
+        db.execute(delete(User).where(User.id == user_id).first())
+        db.commit()

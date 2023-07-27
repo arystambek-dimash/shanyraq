@@ -25,7 +25,7 @@ class Announcement(Base):
     type_announcement = Column(String)
     price = Column(Float)
     address = Column(String)
-    area = Column(DECIMAL)
+    area = Column(Float)
     rooms_count = Column(Integer)
     description = Column(String)
     announcement_at = Column(TIMESTAMP, default=datetime.now().replace(second=0,microsecond=0))

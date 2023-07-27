@@ -1,4 +1,6 @@
+from _decimal import Decimal
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -37,7 +39,10 @@ class AnnouncementResponse(BaseModel):
     area: float
     rooms_count: int
     description: str
-    user_id: int
+    user: int
+    total_comments: int
+    announcement_at: Optional[datetime] = datetime.utcnow().replace(second=0, microsecond=0)
+    updated_at: Optional[datetime] = datetime.utcnow().replace(second=0, microsecond=0)
 
 
 class AnnouncementRepository:
@@ -65,7 +70,7 @@ class AnnouncementRepository:
             address=announcement.address, area=announcement.area,
             rooms_count=announcement.rooms_count,
             description=announcement.description,
-            updated_at=datetime.now().replace(second=0,microsecond=0))
+            updated_at=datetime.now().replace(second=0, microsecond=0))
 
         db.execute(update_announcement)
         db.commit()
@@ -76,7 +81,7 @@ class AnnouncementRepository:
 
     @staticmethod
     def delete_announcement(db: Session, announcement_id):
-        delete_announcement = delete(Announcement).where(Announcement.id == announcement_id)
+        delete_announcement = delete(Announcement).where(Announcement.id == announcement_id).first()
 
         db.execute(delete_announcement)
         db.commit()
@@ -84,4 +89,3 @@ class AnnouncementRepository:
     @staticmethod
     def get_all(db: Session):
         return db.query(Announcement).all()
-
