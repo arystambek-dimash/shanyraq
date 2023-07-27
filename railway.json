@@ -1,0 +1,14 @@
+{
+    "build": {
+        "builder": "DOCKERFILE",
+        "watchPatterns": [
+            "/app/*.py",
+            "/app/**/*.py",
+            "/Dockerfile",
+            "/pyproject.toml"
+        ]
+    },
+    "deploy": {
+        "restartPolicyType": "ON_FAILURE"
+    }
+}
