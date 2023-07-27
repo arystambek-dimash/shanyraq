@@ -81,7 +81,7 @@ class AnnouncementRepository:
 
     @staticmethod
     def delete_announcement(db: Session, announcement_id):
-        delete_announcement = delete(Announcement).where(Announcement.id == announcement_id).first()
+        delete_announcement = delete(Announcement).where(Announcement.id == announcement_id)
 
         db.execute(delete_announcement)
         db.commit()

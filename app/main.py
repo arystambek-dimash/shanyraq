@@ -124,7 +124,7 @@ async def delete_announcement(id_announcement: int,
     db_announcement = announcement_repo.get_announcement_by_id(db, id_announcement)
     if not db_announcement:
         raise HTTPException(status_code=404, detail="The announcement not found")
-    if db_announcement.user != current_user.id and current_user.is_superuser != True:
+    if db_announcement.user != current_user.id or current_user.is_superuser != True:
         raise HTTPException(status_code=404, detail="The flower ID is incorrect or you are not"
                                                     "the user who placed the announcement")
     announcement_repo.delete_announcement(db, id_announcement)
@@ -170,7 +170,7 @@ async def delete_comment(id_announcement: int, comment_id: int,
     db_comment = comment_repo.get_comment_by_announcement_id_with_comment_id(db, id_announcement, comment_id)
     if not db_comment:
         raise HTTPException(status_code=404, detail="The comment not found")
-    if db_comment.user_id == current_user.id and db_comment and current_user.is_superuser != True:
+    if db_comment.user_id == current_user.id or current_user.is_superuser:
         comment_repo.delete_comment(db, announcement_id=id_announcement, user_id=current_user.id, comment_id=comment_id)
         return {"message": "Comment was successful deleted"}
     raise HTTPException(status_code=404, detail="The comment not found or ur not the creater")
@@ -190,7 +190,7 @@ def appoint_as_super_user(user_id: int, current_user: UserResponse = Depends(get
     if current_user.is_superuser and user_repo.get_user_by_id(db, user_id) is not None:
         user_repo.appoint_as_superuser(db, user_id)
         return {"message": "The user was superuser"}
-    raise HTTPException(status_code=400, detail="Ur are not superuser")
+    raise HTTPException(status_code=400, detail="Ur are not superuser or the user not in database")
 
 
 @app.delete("/auth/users/delete_user", tags=["Superuser"])
@@ -199,4 +199,4 @@ def delete_user(user_id: int, current_user: UserResponse = Depends(get_current_u
     if current_user.is_superuser and user_repo.get_user_by_id(db, user_id) is not None:
         user_repo.delete_user(db, user_id)
         return {"message": "The user was deleted"}
-    raise HTTPException(status_code=400, detail="Ur are not superuser")
+    raise HTTPException(status_code=400, detail="Ur are not superuser or the user not in database")

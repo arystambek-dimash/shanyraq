@@ -53,7 +53,7 @@ class UserResponse(BaseModel):
     city: str
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
-    is_superuser: bool = False
+    is_superuser: bool
 
 
 class UserUpdate(BaseModel):
